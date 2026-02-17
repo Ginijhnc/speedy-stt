@@ -9,6 +9,7 @@ mod feedback;
 mod hotkey;
 mod input;
 mod tray;
+mod volume;
 mod whisper;
 
 use anyhow::{Context, Result};

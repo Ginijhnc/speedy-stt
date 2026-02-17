@@ -22,6 +22,7 @@ use crate::feedback::FeedbackPlayer;
 use crate::hotkey::HotkeyListener;
 use crate::input::TextInjector;
 use crate::tray::{TrayManager, TrayState};
+use crate::volume::VolumeDucker;
 use crate::whisper::WhisperEngine;
 
 /// Holds all runtime components and drives the event loop.
@@ -50,6 +51,8 @@ pub struct App {
     whisper_language: String,
     /// How long to keep the model loaded after the last use before unloading
     model_unload_delay: Duration,
+    /// Active volume ducker, present only while recording is in progress
+    volume_ducker: Option<VolumeDucker>,
 }
 
 impl App {
@@ -80,6 +83,7 @@ impl App {
             whisper_threads: config.whisper_threads,
             whisper_language: config.whisper_language,
             model_unload_delay: Duration::from_secs(config.model_unload_delay_secs),
+            volume_ducker: None,
         })
     }
 
@@ -153,6 +157,13 @@ impl App {
             error!("Failed to play start sound: {}", e);
         }
 
+        // Duck other applications' audio so they do not interfere with recording
+        #[cfg(windows)]
+        match VolumeDucker::duck() {
+            Ok(ducker) => self.volume_ducker = Some(ducker),
+            Err(e) => error!("Failed to duck audio: {}", e),
+        }
+
         // Start model loading in parallel if not already loaded or loading
         if self.whisper.is_none() && self.model_load_handle.is_none() {
             let path = self.model_path.clone();
@@ -182,6 +193,14 @@ impl App {
         info!("Hotkey released - stopping recording");
 
         *stop_signal.lock().unwrap() = true;
+
+        // Restore other applications' audio now that recording has stopped
+        #[cfg(windows)]
+        if let Some(ducker) = self.volume_ducker.take()
+            && let Err(e) = ducker.restore()
+        {
+            error!("Failed to restore audio: {}", e);
+        }
 
         // Resolve the model: wait for background load if needed
         if self.whisper.is_none()

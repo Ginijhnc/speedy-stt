@@ -10,7 +10,7 @@ a) Model benchmarking purposes.
 
 b) Saves me 12 USD per month by avoiding a monthly subscription to proprietary alternatives.
 
-c) Wanted to quickly build my own STT app, with no UI/features I don't use. Lowest resource consumption possible.
+c) Wanted to quickly build my own STT app, with no UI/features I don't use. Around 99% less RAM usage at idle compared to Wispr Flow (~3MB vs ~450MB).
 
 ## Features
 
@@ -21,6 +21,7 @@ c) Wanted to quickly build my own STT app, with no UI/features I don't use. Lowe
 - Whisper-based transcription (CPU-optimized)
 - Auto-paste transcribed text into active window
 - Lazy model loading: model is loaded on demand and freed after a configurable idle cooldown
+- Audio ducking: automatically fades background audio to silence during recording, then restores it (prevents background music from interfering with transcription)
 
 ## Quick Start
 
