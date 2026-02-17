@@ -6,6 +6,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use tracing::{error, info};
@@ -33,10 +34,22 @@ pub struct App {
     feedback: FeedbackPlayer,
     /// Text injection into the active window
     injector: TextInjector,
-    /// Whisper transcription engine
-    whisper: WhisperEngine,
     /// Volume boost applied to recorded audio
     volume_boost: f32,
+    /// Loaded Whisper engine, or None if currently unloaded
+    whisper: Option<WhisperEngine>,
+    /// Background thread handle for in-progress model loading
+    model_load_handle: Option<JoinHandle<Result<WhisperEngine>>>,
+    /// Timestamp of the last completed transcription, used for cooldown-based unloading
+    last_model_use: Option<Instant>,
+    /// Path to the Whisper model file
+    model_path: PathBuf,
+    /// Number of CPU threads to use for Whisper inference
+    whisper_threads: usize,
+    /// Language code for transcription
+    whisper_language: String,
+    /// How long to keep the model loaded after the last use before unloading
+    model_unload_delay: Duration,
 }
 
 impl App {
@@ -48,9 +61,6 @@ impl App {
         let feedback = FeedbackPlayer::new(config.enable_sound_feedback);
         let injector = TextInjector::new();
         let model_path = PathBuf::from(format!("./assets/models/{}", config.whisper_model));
-        let whisper =
-            WhisperEngine::load(&model_path, config.whisper_threads, config.whisper_language)
-                .context("Failed to load Whisper model")?;
 
         info!(
             "Speedy-STT ready. Hold {} + {} to record.",
@@ -62,8 +72,14 @@ impl App {
             hotkey,
             feedback,
             injector,
-            whisper,
             volume_boost: config.volume_boost,
+            whisper: None,
+            model_load_handle: None,
+            last_model_use: None,
+            model_path,
+            whisper_threads: config.whisper_threads,
+            whisper_language: config.whisper_language,
+            model_unload_delay: Duration::from_secs(config.model_unload_delay_secs),
         })
     }
 
@@ -104,13 +120,24 @@ impl App {
                 }
             }
 
+            // Unload model if the cooldown period has expired
+            if self.whisper.is_some()
+                && !is_recording
+                && let Some(last_use) = self.last_model_use
+                && last_use.elapsed() >= self.model_unload_delay
+            {
+                self.whisper = None;
+                self.last_model_use = None;
+                info!("Whisper model unloaded after cooldown");
+            }
+
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
 
         Ok(())
     }
 
-    /// Start recording audio in a background thread.
+    /// Start recording audio in a background thread and trigger model loading in parallel.
     fn start_recording(
         &mut self,
         stop_signal: Arc<Mutex<bool>>,
@@ -126,6 +153,18 @@ impl App {
             error!("Failed to play start sound: {}", e);
         }
 
+        // Start model loading in parallel if not already loaded or loading
+        if self.whisper.is_none() && self.model_load_handle.is_none() {
+            let path = self.model_path.clone();
+            let threads = self.whisper_threads;
+            let language = self.whisper_language.clone();
+
+            info!("Loading Whisper model in background...");
+            self.model_load_handle = Some(std::thread::spawn(move || {
+                WhisperEngine::load(&path, threads, language)
+            }));
+        }
+
         *stop_signal.lock().unwrap() = false;
         let recorder = AudioRecorder::new(self.volume_boost);
 
@@ -134,7 +173,7 @@ impl App {
         }))
     }
 
-    /// Stop recording, wait for the thread, then transcribe and inject the result.
+    /// Stop recording, wait for the model if still loading, then transcribe and inject the result.
     fn finish_recording(
         &mut self,
         stop_signal: &Arc<Mutex<bool>>,
@@ -143,6 +182,34 @@ impl App {
         info!("Hotkey released - stopping recording");
 
         *stop_signal.lock().unwrap() = true;
+
+        // Resolve the model: wait for background load if needed
+        if self.whisper.is_none()
+            && let Some(handle) = self.model_load_handle.take()
+        {
+            match handle.join() {
+                Ok(Ok(engine)) => {
+                    info!("Whisper model loaded successfully");
+                    self.whisper = Some(engine);
+                }
+                Ok(Err(e)) => {
+                    error!("Failed to load Whisper model: {}", e);
+                    self.tray.set_state(TrayState::Idle)?;
+                    if let Some(thread) = recording_thread.take() {
+                        let _ = thread.join();
+                    }
+                    return Ok(());
+                }
+                Err(_) => {
+                    error!("Model loading thread panicked");
+                    self.tray.set_state(TrayState::Idle)?;
+                    if let Some(thread) = recording_thread.take() {
+                        let _ = thread.join();
+                    }
+                    return Ok(());
+                }
+            }
+        }
 
         if let Some(thread) = recording_thread.take() {
             match thread.join() {
@@ -157,24 +224,31 @@ impl App {
                     self.tray.set_state(TrayState::Idle)?;
                     info!("Recording stopped, transcribing...");
 
-                    match self.whisper.transcribe(&samples) {
-                        Ok(text) if !text.is_empty() => {
-                            if let Err(e) = self.injector.inject(&text) {
-                                error!("Failed to inject text: {}", e);
+                    if let Some(ref whisper) = self.whisper {
+                        match whisper.transcribe(&samples) {
+                            Ok(text) if !text.is_empty() => {
+                                if let Err(e) = self.injector.inject(&text) {
+                                    error!("Failed to inject text: {}", e);
+                                }
+                                info!("Transcription complete");
                             }
-                            info!("Transcription complete");
+                            Ok(_) => info!("Transcription complete (empty result)"),
+                            Err(e) => error!("Transcription failed: {}", e),
                         }
-                        Ok(_) => info!("Transcription complete (empty result)"),
-                        Err(e) => error!("Transcription failed: {}", e),
                     }
+
+                    // Start cooldown timer instead of dropping the model immediately
+                    self.last_model_use = Some(Instant::now());
                 }
                 Ok(Err(e)) => {
                     error!("Recording failed: {}", e);
                     self.tray.set_state(TrayState::Idle)?;
+                    self.last_model_use = Some(Instant::now());
                 }
                 Err(_) => {
                     error!("Recording thread panicked");
                     self.tray.set_state(TrayState::Idle)?;
+                    self.last_model_use = Some(Instant::now());
                 }
             }
         }

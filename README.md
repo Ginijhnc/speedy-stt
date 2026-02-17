@@ -20,6 +20,7 @@ c) Wanted to quickly build my own STT app, with no UI/features I don't use. Lowe
 - Volume boost for distant microphones
 - Whisper-based transcription (CPU-optimized)
 - Auto-paste transcribed text into active window
+- Lazy model loading: model is loaded on demand and freed after a configurable idle cooldown
 
 ## Quick Start
 
