@@ -1,9 +1,10 @@
 //! Text injection via keyboard simulation
 
-use anyhow::Result;
-use enigo::{Enigo, Keyboard, Settings};
 use std::thread;
 use std::time::Duration;
+
+use anyhow::Result;
+use enigo::{Enigo, Keyboard, Settings};
 
 /// Text injector
 pub struct TextInjector {

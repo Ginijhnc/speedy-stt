@@ -1,10 +1,11 @@
 //! Audio feedback for recording state
 
-use anyhow::{Context, Result};
-use rodio::{Decoder, OutputStreamBuilder, Sink};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+
+use anyhow::{Context, Result};
+use rodio::{Decoder, OutputStreamBuilder, Sink};
 use tracing::info;
 
 /// Audio feedback player

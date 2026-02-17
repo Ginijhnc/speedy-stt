@@ -1,8 +1,9 @@
 //! Audio capture with volume boost
 
+use std::sync::{Arc, Mutex};
+
 use anyhow::{Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
 /// Audio recorder that captures from default microphone
