@@ -15,6 +15,7 @@ pub struct Config {
     pub enable_sound_feedback: bool,
     pub log_to_file: bool,
     pub log_level: String,
+    pub model_unload_delay_secs: u64,
 }
 
 impl Config {
@@ -42,6 +43,9 @@ impl Config {
                 .parse()
                 .context("Invalid LOG_TO_FILE")?,
             log_level: Self::get_env("LOG_LEVEL")?,
+            model_unload_delay_secs: Self::get_env("MODEL_UNLOAD_DELAY_SECS")?
+                .parse()
+                .context("Invalid MODEL_UNLOAD_DELAY_SECS")?,
         })
     }
 
