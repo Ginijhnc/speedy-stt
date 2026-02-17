@@ -1,0 +1,35 @@
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "0BSD",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+
+[advisories]
+ignore = [
+    # All of the following are Linux-only transitive deps pulled in by
+    # tray-icon via libappindicator/GTK3. This project is Windows-only.
+    "RUSTSEC-2024-0370", # proc-macro-error unmaintained
+    "RUSTSEC-2024-0412", # gdk unmaintained
+    "RUSTSEC-2024-0413", # atk unmaintained
+    "RUSTSEC-2024-0415", # gtk unmaintained
+    "RUSTSEC-2024-0416", # atk-sys unmaintained
+    "RUSTSEC-2024-0418", # gdk-sys unmaintained
+    "RUSTSEC-2024-0419", # gtk3-macros unmaintained
+    "RUSTSEC-2024-0420", # gtk-sys unmaintained
+]
+
+[bans]
+multiple-versions = "warn"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

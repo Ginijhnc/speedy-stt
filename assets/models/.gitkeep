@@ -1,0 +1,3 @@
+# Models directory
+# Place Whisper model files here
+# Run: .\scripts\download-model.ps1 base

@@ -1,0 +1,74 @@
+[package]
+name = "speedy-stt"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+too_many_arguments = "allow"
+multiple_crate_versions = "allow"
+cargo_common_metadata = "allow"
+
+cognitive_complexity = "warn"
+alloc_instead_of_core = "warn"
+std_instead_of_alloc = "warn"
+std_instead_of_core = "warn"
+exhaustive_enums = "warn"
+exhaustive_structs = "warn"
+mem_forget = "warn"
+missing_docs_in_private_items = "warn"
+undocumented_unsafe_blocks = "warn"
+unnecessary_safety_comment = "warn"
+unnecessary_safety_doc = "warn"
+multiple_unsafe_ops_per_block = "warn"
+missing_assert_message = "warn"
+allow_attributes_without_reason = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+indexing_slicing = "warn"
+as_conversions = "deny"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+clone_on_ref_ptr = "warn"
+if_then_some_else_none = "warn"
+impl_trait_in_params = "warn"
+pattern_type_mismatch = "warn"
+shadow_reuse = "warn"
+shadow_unrelated = "warn"
+str_to_string = "warn"
+try_err = "warn"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[dependencies]
+whisper-rs = "0.15.1"
+cpal = "0.17.1"
+hound = "3.5.1"
+enigo = "0.6.1"
+global-hotkey = "0.7.0"
+tray-icon = "0.21.3"
+rodio = "0.21.1"
+dotenvy = "0.15.7"
+anyhow = "1.0.101"
+thiserror = "2.0.18"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = [
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Media_Audio",
+    "Win32_Media_Audio_Endpoints",
+    "Win32_System_Com",
+    "Win32_Foundation"
+] }

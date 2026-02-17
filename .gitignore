@@ -1,0 +1,7 @@
+/target
+/assets/models/*.bin
+.env
+*.log
+build-log.txt
+TO DO.md
+.claude/commands/*

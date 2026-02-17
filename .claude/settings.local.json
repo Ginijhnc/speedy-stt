@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo check:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo deny check:*)"
+    ],
+    "deny": [
+      "Read(.env)"
+    ]
+  }
+}
