@@ -1,7 +1,8 @@
 //! Whisper model loading and inference
 
-use anyhow::{Context, Result};
 use std::path::Path;
+
+use anyhow::{Context, Result};
 use tracing::info;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
